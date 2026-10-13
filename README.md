@@ -65,7 +65,7 @@ When two sessions build two halves of one feature, they agree a written API cont
 ### 3. Fan out
 **Coordinator agent launches and supervises the fleet**
 
-- **Parallel by default.** One fresh session per job, each with its own git worktree, branch and inbox, so they never collide.
+- **Parallel by default.** One fresh session per job, each with its own sandbox (or git worktree, if you don't have sandboxes), branch and inbox, so they never collide.
 - **Use more than one coding harness.** Put heavy work on your strongest tools, and route cheap, high-volume jobs (mechanical refactors, docs, log summaries, first-pass triage, test scaffolding) to low-cost models. Everything goes through the same gate.
 - **Balance by usage.** Before each wave, check how much each plan has been used and place new sessions on the one with headroom.
 - **Match model strength to task difficulty** (table below).
@@ -83,9 +83,9 @@ When two sessions build two halves of one feature, they agree a written API cont
 *Check: no session on a saturated plan, no idle session unnoticed.*
 
 ### 4. Build against a failing test
-**Every coding session, isolated worktree**
+**Every coding session, isolated sandbox or worktree**
 
-- Branch from the named commit in a private worktree, never the live checkout.
+- Branch from the named commit in a private sandbox, or a git worktree if sandboxes aren't available. Never the live checkout.
 - Write the test first and show it fails on the base. Then fix it, then prove it passes.
 - Hand back a result package: branch, tip commit, commit list, measured numbers, evidence paths, and a list of what is *not* claimed.
 
@@ -102,7 +102,7 @@ When two sessions build two halves of one feature, they agree a written API cont
 ### 6. Gate, staging, ship
 **Gate agent, then coordinator**
 
-- A gate agent that wrote none of the code runs a fixed set of checks on the exact commit.
+- A gate agent with a fresh context window, that wrote none of the code, tries to break the change on the exact commit: the fixed core checks plus checks tailored to that change.
 - The release is built on staging, set up the same way as production, and soaked.
 - The human gets one message: what changed, what passed, "ready to ship?". Approval promotes staging to production with automatic rollback armed.
 
@@ -164,6 +164,7 @@ Run by an agent that wrote none of the code:
 5. **Resource soak** on the built artifact: file handles, memory, restarts, shutdown time.
 
 - **Flake protocol.** Rerun any unexpected failure in isolation on the new commit and the old one several times. Fails on both: log it as a flake. Fails only on new: a blocking regression, sent back to the author with its exact signature.
+- **Adapts, never loosens.** The gate starts each run with a fresh context, reads the change, and adds targeted attempts to break it on top of the fixed suite. It can add checks. It can never remove or weaken one.
 - **Nothing is overwritten.** Failed attempts stay in the evidence. The gate never edits product code, assertions or timeouts.
 
 ### 4. Agents use the app like a human
@@ -193,8 +194,8 @@ Run by an agent that wrote none of the code:
 |----|----|
 | Trigger | User bugs and feature requests, plus scheduled production checks |
 | Bounded task | Written brief with base commit, fail-first test and forbidden moves |
-| Worker | Parallel sessions, one git worktree each |
-| Review | Coordinator reads the diff; an independent gate runs fixed checks on the exact commit |
+| Worker | Parallel sessions, one sandbox (or git worktree) each |
+| Review | Coordinator reads the diff; an independent gate runs fixed core checks plus change-specific checks on the exact commit |
 | Close or escalate | Regression back to the author with its signature, or a logged flake after isolation reruns |
 | Human decision | GO to start, approve to ship |
 
@@ -204,7 +205,7 @@ Run by an agent that wrote none of the code:
 
 | Purpose | What you need |
 |----|----|
-| Isolation | Git worktrees per session, one integration branch, revertible merges |
+| Isolation | Sandboxes (or git worktrees) per session, one integration branch, revertible merges |
 | Tests | A unit test runner, a browser automation tool with mobile emulation, a type checker |
 | Human simulation | Agent-driven browsers, step screenshots, screen recordings, live log and network tailing |
 | Heavy runs | A second machine as a shared test runner that keeps raw output |
@@ -222,9 +223,9 @@ Run by an agent that wrote none of the code:
 
 - **The author never grades their own work.** The gate did not write the code it tests.
 - **A test must fail before it counts.** A test that never failed has never proven anything.
-- **Gates do not move.** No weakened assertions, longer timeouts or new allowances to get a pass.
+- **Gates adapt, but never loosen.** Each change gets its own targeted checks on top of the fixed suite. No weakened assertions, longer timeouts or new allowances to get a pass.
 - **Claims carry evidence.** Every number in a report points to a file, and reports list what they did not prove.
-- **Parallel, but never shared.** Own worktree, branch and context per session. Contracts are written before two sessions touch one interface.
+- **Parallel, but never shared.** Own sandbox or worktree, branch and context per session. Contracts are written before two sessions touch one interface.
 - **Humans decide direction, not mechanics.** People choose what to build and when to ship. Triage, briefs, testing, merging and rollback belong to the line.
 
 ---
